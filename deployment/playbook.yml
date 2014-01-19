@@ -1,0 +1,41 @@
+---
+- hosts: all
+
+  tasks:
+    - name: update apt cache
+      apt: update_cache=yes cache_valid_time=86400
+      sudo: yes
+
+    - name: install packages
+      apt: pkg={{ item }} state=latest
+      sudo: yes
+      with_items:
+        - golang
+        - rsync
+        - wget
+        - unattended-upgrades
+        - supervisor
+        - screen
+        - git-core
+        - mysql-server
+        - build-essential
+
+    - name: create supervisor program config
+      action: template src=./supervisor.conf dest=/etc/supervisor/conf.d/opencoindata.conf
+
+    - name: update codebase on server
+      synchronize: src=../ dest=/root/opencoindata
+
+    - name: update babelcoin codebase on server
+      synchronize: src=../../babelcoin dest=/root/babelcoin
+
+    - name: create go workspace dirs
+      action: file path=/root/.go/src/github.com/lox state=directory
+
+    - name: symlink opencoindata into go workspace
+      action: file src=/root/opencoindata dest=/root/.go/src/github.com/lox/opencoindata state=link
+
+    - name: symlink babelcoin into go workspace
+      action: file src=/root/babelcoin dest=/root/.go/src/github.com/lox/babelcoin state=link
+
+
