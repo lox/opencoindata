@@ -14,8 +14,6 @@ import (
 	"github.com/ziutek/mymysql/mysql"
 )
 
-const ()
-
 type Trade struct {
 	Id       string  `db:"tid"`
 	Amount   float64 `db:"amount"`
@@ -37,9 +35,9 @@ func main() {
 	usage := `Open Coin Data. Cryptocoin exchange data for all. 
 
 Usage:
-  ocd poll [--interval=<duration>] 
-  ocd -h | --help
-  ocd --version
+  opencoindata poll [--interval=<duration>] 
+  opencoindata -h | --help
+  opencoindata --version
 
 Options:
   -h --help     			Show this screen.
