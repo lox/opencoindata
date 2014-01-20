@@ -1,6 +1,10 @@
 ---
 - hosts: all
 
+  vars:
+    app_name: opencoindata 
+    app_dir: /root/.go/github.com/lox/{{ app_name }}
+
   tasks:
     - name: update apt cache
       apt: update_cache=yes cache_valid_time=86400
@@ -20,22 +24,33 @@
         - mysql-server
         - build-essential
 
-    - name: create supervisor program config
-      action: template src=./supervisor.conf dest=/etc/supervisor/conf.d/opencoindata.conf
+    - name: create go workspace dirs
+      action: file path={{ app_dir }} state=directory
 
     - name: update codebase on server
-      synchronize: src=../ dest=/root/opencoindata
+      synchronize: src=../ dest={{ app_dir }} rsync_timeout=45
 
-    - name: update babelcoin codebase on server
-      synchronize: src=../../babelcoin dest=/root/babelcoin
+    - name: symlink app into homedir
+      action: file src={{ app_dir }} dest=/root/{{ app_name }} state=link
+    
+    - name: build app binary
+      command: GOPATH=/root/.go GOBIN=/root/.go/bin make chdir={{ app_dir }}  
 
-    - name: create go workspace dirs
-      action: file path=/root/.go/src/github.com/lox state=directory
+    - name: create supervisor program config
+      action: template src=./supervisor.conf dest=/etc/supervisor/conf.d/{{ app_name }}.conf
+      notify:
+        - reload supervisor
 
-    - name: symlink opencoindata into go workspace
-      action: file src=/root/opencoindata dest=/root/.go/src/github.com/lox/opencoindata state=link
+  handlers:
+    - name: reload supervisor
+      action: supervisorctl name={{ app_name }} state=restarted
 
-    - name: symlink babelcoin into go workspace
-      action: file src=/root/babelcoin dest=/root/.go/src/github.com/lox/babelcoin state=link
+
+
+
+
+
+
+
 
 
