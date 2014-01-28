@@ -36,7 +36,7 @@ func (c *WebCommand) Run(args []string) int {
 		return 1
 	}
 
-	if err := web.Run(bindArg); err != nil {
+	if err := web.NewWebServer().Serve(bindArg); err != nil {
 		c.Ui.Error(err.Error())
 		return 1
 	}

@@ -3,12 +3,16 @@ package command
 import (
 	"flag"
 	"fmt"
+	"log"
+	"runtime"
 	"strings"
 	"time"
-
-	ocd "github.com/lox/opencoindata/core"
+	. "github.com/lox/opencoindata/core"
+	"github.com/lox/opencoindata/web"
 	"github.com/mitchellh/cli"
 )
+
+var SupportedExchanges = []string{"btce", "cryptsy"}
 
 // CollectCommand polls exchanges to collect data from them
 type CollectCommand struct {
@@ -34,10 +38,16 @@ Options:
 func (c *CollectCommand) Run(args []string) int {
 	var durationArg string
 
+	go func() {
+		ticker := time.NewTicker(time.Second * 10)
+		for _ = range ticker.C {
+			log.Printf("GoRoutines: %d", runtime.NumGoroutine())
+		}
+	}()
+
 	cmdFlags := flag.NewFlagSet("start", flag.ContinueOnError)
 	cmdFlags.Usage = func() { c.Ui.Output(c.Help()) }
 	cmdFlags.StringVar(&durationArg, "i", "30s", "The time between polls")
-
 	if err := cmdFlags.Parse(args); err != nil {
 		return 1
 	}
@@ -48,17 +58,26 @@ func (c *CollectCommand) Run(args []string) int {
 		return 1
 	}
 
-	// start up collectors
+	tradeChan := make(chan Trade, 100000)
+
 	go func() {
-		for tc := range ocd.TradeCollectors([]string{"btce"}) {
-			c.Ui.Output(fmt.Sprintf("Polling %v on %s", tc.Pair, tc.ExchangeKey))
+		// prevent bulk-loading from melting clients
+		for _ = range time.NewTicker(time.Millisecond * 100).C {
+			web.SendTrade(<-tradeChan)
+		}
+	}()
+
+	go func() {
+		for tc := range TradeCollectors(SupportedExchanges) {
 			go func() {
 				for trade := range tc.Collect(duration) {
-					c.Ui.Output(fmt.Sprintf("%s", trade.String()))
+					c.Ui.Output(fmt.Sprintf("%s %v", trade.Exchange, trade.String()))
+					tradeChan <- trade
 				}
 			}()
 		}
 	}()
+
 	<-c.ShutdownCh
 
 	return 1

@@ -20,7 +20,6 @@ func realMain() int {
 	}
 
 	// log.SetOutput(ioutil.Discard)
-
 	// show the version
 	args := os.Args[1:]
 	for _, arg := range args {
