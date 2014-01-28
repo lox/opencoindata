@@ -3,8 +3,6 @@ package command
 import (
 	"flag"
 	"fmt"
-	"log"
-	"runtime"
 	"strings"
 	"time"
 	. "github.com/lox/opencoindata/core"
@@ -37,13 +35,6 @@ Options:
 
 func (c *CollectCommand) Run(args []string) int {
 	var durationArg string
-
-	go func() {
-		ticker := time.NewTicker(time.Second * 10)
-		for _ = range ticker.C {
-			log.Printf("GoRoutines: %d", runtime.NumGoroutine())
-		}
-	}()
 
 	cmdFlags := flag.NewFlagSet("start", flag.ContinueOnError)
 	cmdFlags.Usage = func() { c.Ui.Output(c.Help()) }

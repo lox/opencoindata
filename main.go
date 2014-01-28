@@ -2,9 +2,13 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"runtime"
+	"time"
 
+	"net/http"
+	_ "net/http/pprof"
 	_ "github.com/lox/opencoindata/command"
 	"github.com/mitchellh/cli"
 )
@@ -14,6 +18,24 @@ func main() {
 }
 
 func realMain() int {
+	if os.Getenv("PROFILE") == "1" {
+		go func() {
+			ticker := time.NewTicker(time.Second * 10)
+			for _ = range ticker.C {
+				runtime.GC()
+				var s runtime.MemStats
+				runtime.ReadMemStats(&s)
+				fmt.Printf("Alloc: %d Sys: %d Gc: %d GoRoutines: %d\n",
+					s.Alloc, s.Sys, s.NumGC, runtime.NumGoroutine())
+			}
+		}()
+
+		log.Printf("Profiling on http://localhost:6060/debug/pprof")
+		go func() {
+			log.Println(http.ListenAndServe("localhost:6060", nil))
+		}()
+	}
+
 	// If there is no explicit number of Go threads to use, then set it
 	if os.Getenv("GOMAXPROCS") == "" {
 		runtime.GOMAXPROCS(runtime.NumCPU())

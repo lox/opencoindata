@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/coopernurse/gorp"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/lox/babelcoin/core"
 	_ "github.com/lox/babelcoin/exchanges/btce"
 	_ "github.com/lox/babelcoin/exchanges/cryptsy"
@@ -91,8 +90,6 @@ func (i tradeCollector) Collect(interval time.Duration) chan Trade {
 			}
 			if !skipped {
 				out <- Trade{t}
-			} else {
-				log.Printf("Skipping %v, exists in the db", t.Identity())
 			}
 		}
 	}()
@@ -145,13 +142,11 @@ func newTradeDb(exchange string, pair babelcoin.Pair) (*gorp.DbMap, error) {
 }
 
 func GetPairStatus() (map[babelcoin.Pair]time.Time, error) {
-	db, err := dbSingleton()
-	if err != nil {
-		return map[babelcoin.Pair]time.Time{}, err
-	}
+	// db, err := dbSingleton()
+	// if err != nil {
+	// return map[babelcoin.Pair]time.Time{}, err
+	// }
 
-	dbMap := &gorp.DbMap{Db: db, Dialect: gorp.MySQLDialect{"InnoDB", "UTF8"}}
-	spew.Dump(dbMap)
-
+	// dbMap := &gorp.DbMap{Db: db, Dialect: gorp.MySQLDialect{"InnoDB", "UTF8"}}
 	return map[babelcoin.Pair]time.Time{}, nil
 }

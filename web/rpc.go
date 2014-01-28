@@ -48,11 +48,6 @@ func SendTrade(t Trade) error {
 	}
 
 	var result bool
-	err := rpcClient.Call("TradeServer.SendTrade", t, &result)
-	if err != nil {
-		log.Printf("TradeServer.SendTrade Error: %v", err)
-		return err
-	}
-
+	rpcClient.Go("TradeServer.SendTrade", t, &result, nil)
 	return nil
 }
