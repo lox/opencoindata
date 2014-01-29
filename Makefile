@@ -15,7 +15,4 @@ deps:
 test: deps 
 	go list ./... | xargs -n1 go test
 
-deploy:
-	ansible-playbook -i deployment/hosts deployment/playbook.yml
-
 .PNONY: all cov deps integ test
