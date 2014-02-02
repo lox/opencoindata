@@ -2,10 +2,15 @@ package command
 
 import (
 	"flag"
+	"os"
 	"strings"
 
 	"github.com/lox/opencoindata/web"
 	"github.com/mitchellh/cli"
+)
+
+const (
+	DEFAULT_BIND = ":8080"
 )
 
 // WebCommand loads up the web application server
@@ -18,10 +23,6 @@ func (c *WebCommand) Help() string {
 Usage: opencoindata web [options]
 
   Launches a web server running the opencoindata site
-
-Options:
-
-  -b=address:port               The interface to bind to, defaults to :8080
 `
 	return strings.TrimSpace(helpText)
 }
@@ -31,12 +32,26 @@ func (c *WebCommand) Run(args []string) int {
 
 	cmdFlags := flag.NewFlagSet("web", flag.ContinueOnError)
 	cmdFlags.Usage = func() { c.Ui.Output(c.Help()) }
-	cmdFlags.StringVar(&bindArg, "b", ":8080", "bind")
+	cmdFlags.StringVar(&bindArg, "b", DEFAULT_BIND, "bind")
 	if err := cmdFlags.Parse(args); err != nil {
 		return 1
 	}
 
-	if err := web.NewWebServer().Serve(bindArg); err != nil {
+	config := web.ServeConfig{}
+
+	if os.Getenv("OCD_BIND") != "" {
+		config.BindAddress = os.Getenv("OCD_BIND")
+	}
+
+	if os.Getenv("OCD_API_HOST") != "" {
+		config.ApiHostname = os.Getenv("OCD_API_HOST")
+	}
+
+	if os.Getenv("OCD_WS_HOST") != "" {
+		config.WsHostname = os.Getenv("OCD_WS_HOST")
+	}
+
+	if err := web.Serve(config); err != nil {
 		c.Ui.Error(err.Error())
 		return 1
 	}

@@ -140,13 +140,3 @@ func newTradeDb(exchange string, pair babelcoin.Pair) (*gorp.DbMap, error) {
 
 	return dbMap, nil
 }
-
-func GetPairStatus() (map[babelcoin.Pair]time.Time, error) {
-	// db, err := dbSingleton()
-	// if err != nil {
-	// return map[babelcoin.Pair]time.Time{}, err
-	// }
-
-	// dbMap := &gorp.DbMap{Db: db, Dialect: gorp.MySQLDialect{"InnoDB", "UTF8"}}
-	return map[babelcoin.Pair]time.Time{}, nil
-}

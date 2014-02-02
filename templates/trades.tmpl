@@ -1,60 +1,41 @@
-
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Open Coin Data - Trades</title>
-    <link rel="stylesheet" href="/pure-0.3.0-min.css">
-    <link rel="stylesheet" href="/main.css">
-    <style type="text/css">
-        .tradelist {
-            list-style: none;
-            margin: 0;
-            padding: 0;
-        }
-        .tradelist .tradelist-row {
-            text-align: center;
-            padding: 0;
-            margin: 0;
-
-        }
-    </style>
-    <script type="text/javascript" src="/jquery-2.1.0.min.js"></script>
-    <script type="text/javascript" src="/moment.min.js"></script>
-    <script type="text/javascript" src="/livestamp.min.js"></script>
-    <script type="text/javascript" src="/typekit.js"></script>
-    <script type="text/javascript">
-        var ws;
-        if (ws != null) {
-            ws.close();
-            ws = null;
-        }
-        ws = new WebSocket("ws://"+window.location.host+"/api/ws/trades");
-        ws.onopen = function () {
-            console.log("opened");
-        };
-        ws.onmessage = function (e) {
-            var obj = JSON.parse(e.data); 
-            $('.tradelist').prepend(
-                '<li class="tradelist-row">' +
-                obj.Exchange + ' ' +
-                obj.Pair.Base + '/' + obj.Pair.Counter + ' ' +
-                obj.Type.toUpperCase() + ' ' +
-                obj.Amount + ' @ ' +
-                obj.Rate + ' ' +
-                '<small class="timestamp">' + moment(obj.Timestamp).fromNow() + '</span>' + 
-                '</li>'
-            )
-            $('.tradelist li:first-child .timestamp').livestamp(obj.Timestamp);
-            $('.tradelist-row:gt(50)').remove();
-        }
-        ws.onclose = function (e) {
-            console.log("closed");
-        }
-    </script>
-</script>
-<body>
+<style type="text/css">
+    .header {
+        border-bottom: 0;
+    }
+    .content {
+        text-align: center;
+    }
+    .trades__list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        position: relative;
+        z-index: 0;
+    }
+    .trades__list__row {
+        text-align: center;
+        padding: 0;
+        margin: 0;
+    }
+    .trades__list:before {
+        content: " ";
+        width: 100%;
+        height: 50px;
+        position: absolute;
+        z-index: 1;
+        top: 0;
+        left: 0;
+        /*background: linear-gradient(to bottom, rgba(255,255,255,1) 0%,rgba(255,255,255,0) 100%);*/
+    }
+    .trades__loading {
+        display: block;
+        width: 180px;
+        margin: 20px auto;
+        background: #fff url(/ajax-loader.gif) no-repeat right;
+    }
+</style>
+<script type="text/javascript" src="/moment.min.js"></script>
+<script type="text/javascript" src="/livestamp.min.js"></script>
 <div id="layout">
     <div id="main">
         <div class="header">
@@ -63,11 +44,44 @@
         </div>
 
         <div class="content">
-            <ul class="tradelist">
-            </ul>
+            <div class="trades">
+                <span class="trades__loading">Waiting for trades</span>
+                <ul class="trades__list">
+                </ul>
+            </div>
         </div>
     </div>
 </div>
+    
 
-</body>
-</html>
+<script type="text/javascript">
+    var ws;
+    if (ws != null) {
+        ws.close();
+        ws = null;
+    }
+    host = "{{.WsHostname}}" ? "{{.WsHostname}}" : window.location.host
+    ws = new WebSocket("ws://"+host+"/ws/v1/trades");
+    ws.onopen = function () {
+        console.log("ws connection to "+host+" opened");
+    };
+    ws.onmessage = function (e) {
+        $('.trades__loading').hide();
+        var obj = JSON.parse(e.data); 
+        $('.trades__list').prepend(
+            '<li class="trades__list__row">' +
+            obj.Exchange + ' ' +
+            obj.Pair.Base + '/' + obj.Pair.Counter + ' ' +
+            obj.Type.toUpperCase() + ' ' +
+            obj.Amount.toFixed(5) + ' @ ' +
+            obj.Rate.toFixed(8) + ' ' +
+            '<small class="timestamp">' + moment(obj.Timestamp).fromNow() + '</span>' + 
+            '</li>'
+        )
+        $('.tradelist li:first-child .timestamp').livestamp(obj.Timestamp);
+        $('.tradelist-row:gt(50)').remove();
+    }
+    ws.onclose = function (e) {
+        console.log("ws connection to "+host+" closed");
+    }
+</script>

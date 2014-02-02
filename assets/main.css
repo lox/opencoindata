@@ -2,17 +2,25 @@ body {
     color: #777;
 }
 
-#layout {
+a {
+    color: #3b8bba;
 }
 
-/*
-The content `<div>` is where all your content goes.
-*/
+a:visited {
+    color: #265778;
+}
+
 .content {
     margin: 0 auto;
     padding: 0 2em;
     max-width: 800px;
-    margin-bottom: 50px;
+    margin-bottom: 40px;
+    line-height: 1.6em;
+}
+
+.footer {
+    margin: 0 auto; 
+    max-width: 800px;
     line-height: 1.6em;
 }
 

@@ -3,8 +3,6 @@ package web
 import (
 	"log"
 	"net/http"
-	"sync"
-	"github.com/davecgh/go-spew/spew"
 	. "github.com/lox/opencoindata/core"
 
 	"github.com/codegangsta/martini"
@@ -12,45 +10,40 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type WebServer struct {
-	clients map[string]*websocket.Conn
-	mutex   sync.RWMutex
+// configuration for serving the web app
+type ServeConfig struct {
+	// the main host and port to listen on for requests
+	BindAddress string
+	// the hostname to serve api requests from, by default any
+	ApiHostname string
+	// the hostname to serve websockets from, by default any
+	WsHostname string
 }
 
-func NewWebServer() *WebServer {
-	return &WebServer{clients: map[string]*websocket.Conn{}}
+// listens for http requests and routes them to website, api and websockets
+func Serve(config ServeConfig) error {
+	if config.ApiHostname != "" {
+		log.Printf("Serving api on hostname %s", config.ApiHostname)
+	}
+	if config.WsHostname != "" {
+		log.Printf("Serving websockets on hostname %s", config.WsHostname)
+	}
+
+	http.Handle(config.ApiHostname+"/api/", serveApi(config))
+	http.Handle(config.WsHostname+"/ws/", serveWebsockets(config))
+	http.Handle("/", serveWebsite(config))
+
+	log.Printf("Listening on http://" + config.BindAddress)
+	return http.ListenAndServe(config.BindAddress, nil)
 }
 
-func (w *WebServer) addClient(conn *websocket.Conn) {
-	w.mutex.Lock()
-	defer w.mutex.Unlock()
-	w.clients[conn.RemoteAddr().String()] = conn
-}
-
-func (w *WebServer) deleteClient(conn *websocket.Conn) {
-	w.mutex.Lock()
-	defer w.mutex.Unlock()
-	delete(w.clients, conn.RemoteAddr().String())
-}
-
-func (w *WebServer) Serve(bind string) error {
-	go NewTradeServer(func(t Trade) {
-		w.mutex.Lock()
-		defer w.mutex.Unlock()
-
-		// log.Printf("Writing trade to %d clients", len(w.clients))
-		for _, client := range w.clients {
-			if err := client.WriteJSON(t); err != nil {
-				panic(err)
-			}
-		}
-	})
-
+// handles requests to the user-facing website
+func serveWebsite(config ServeConfig) http.Handler {
 	m := martini.Classic()
 	m.Use(martini.Static("assets"))
-	m.Use(render.Renderer(render.Options{Directory: "./templates"}))
 	m.Use(render.Renderer(render.Options{
-		IndentJSON: true,
+		Directory: "./templates",
+		Layout:    "base",
 	}))
 
 	m.Get("/", func(r render.Render) {
@@ -58,40 +51,68 @@ func (w *WebServer) Serve(bind string) error {
 	})
 
 	m.Get("/trades", func(r render.Render) {
-		r.HTML(200, "trades", nil)
+		r.HTML(200, "trades", map[string]interface{}{
+			"WsHostname": config.WsHostname,
+		})
 	})
 
-	m.Get("/api/status", func(r render.Render) {
+	m.Get("/status", func(r render.Render) error {
+		status, err := GetAllPairStatus()
+		if err != nil {
+			return err
+		}
 
-		status, err := GetPairStatus()
-		spew.Dump(status)
-		spew.Dump(err)
-
-		/*
-			var tables []struct {
-				Name string
-			}
-
-			_, err := dbmap.Select(&tables, "SHOW TABLES")
-			log.Printf("Error listing tables: %s", err.Error())
-
-			log.Println("All rows:")
-			for _, p := range tables {
-				log.Printf("%v", p)
-			}
-		*/
-
-		r.JSON(200, map[string]interface{}{"hello": "world"})
+		r.HTML(200, "status", map[string]interface{}{"Status": status})
+		return nil
 	})
 
-	m.Get("/api/ws/trades", WebSocketHandler(func(ws *websocket.Conn) {
-		w.addClient(ws)
+	return m
+}
+
+// handles requests to the restful api
+func serveApi(config ServeConfig) http.Handler {
+	m := martini.Classic()
+	m.Use(render.Renderer(render.Options{
+		IndentJSON: true,
+	}))
+
+	m.Get("/api/v1/status", func(r render.Render) {
+		status, err := GetAllPairStatus()
+		if err != nil {
+			r.JSON(500, map[string]interface{}{"error": err.Error()})
+			return
+		}
+
+		r.JSON(200, status)
+	})
+
+	return m
+}
+
+// serves the real-time websocket api
+func serveWebsockets(config ServeConfig) http.Handler {
+	var clients WebSockets
+
+	// fire up a trade server to listen for trades from the collector
+	go NewTradeServer(func(t Trade) {
+		clients.Map(func(client *websocket.Conn) {
+			if err := client.WriteJSON(t); err != nil {
+				panic(err)
+			}
+		})
+	})
+
+	m := martini.Classic()
+
+	// a route for websockets to connect to be sent trades
+	m.Get("/ws/v1/trades", WebSocketHandler(func(ws *websocket.Conn) {
+		clients.Add(ws)
 
 		for {
 			var obj struct{}
 			err := ws.ReadJSON(&obj)
 			if err != nil {
-				w.deleteClient(ws)
+				clients.Delete(ws)
 				ws.Close()
 				break
 			} else {
@@ -100,19 +121,5 @@ func (w *WebServer) Serve(bind string) error {
 		}
 	}))
 
-	log.Printf("Listening on http://%s", bind)
-	return http.ListenAndServe(bind, m)
-}
-
-func WebSocketHandler(handler func(ws *websocket.Conn)) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ws, err := websocket.Upgrade(w, r, nil, 1024, 1024)
-		if _, ok := err.(websocket.HandshakeError); ok {
-			http.Error(w, "Not a websocket handshake", 400)
-		} else if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		} else {
-			handler(ws)
-		}
-	}
+	return m
 }

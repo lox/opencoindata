@@ -9,6 +9,7 @@ import (
 
 	"net/http"
 	_ "net/http/pprof"
+	_ "github.com/joho/godotenv/autoload"
 	_ "github.com/lox/opencoindata/command"
 	"github.com/mitchellh/cli"
 )

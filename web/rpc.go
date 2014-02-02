@@ -42,6 +42,7 @@ func SendTrade(t Trade) error {
 	if rpcClient == nil {
 		c, err := rpc.Dial("tcp", "127.0.0.1:9999")
 		if err != nil {
+			log.Printf("Failed to connect to rpc port 9999: %s", err.Error())
 			return err
 		}
 		rpcClient = c
