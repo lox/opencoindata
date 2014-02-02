@@ -2,6 +2,7 @@ package opencoindata
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"time"
 
@@ -138,5 +139,13 @@ func newTradeDb(exchange string, pair babelcoin.Pair) (*gorp.DbMap, error) {
 		return nil, err
 	}
 
+	addIndex(dbMap, "time", tableName)
+
 	return dbMap, nil
+}
+
+func addIndex(dbMap *gorp.DbMap, column string, table string) {
+	dbMap.Exec(fmt.Sprintf("ALTER TABLE `%s` ADD INDEX `%s` (`%s`)",
+		table, column, column,
+	))
 }

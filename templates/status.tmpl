@@ -1,3 +1,21 @@
+<style type="text/css">
+    .header {
+        border-bottom: 0;
+    }
+    .pair-status {
+        max-width: 700px;
+        margin: 0 auto;
+    }
+    .status--ok {
+        color: green;
+    }
+    .status--warning {
+        color: orange;
+    }
+    .status--critical {
+        color: red;
+    }    
+</style>
 <script type="text/javascript" src="/moment.min.js"></script>
 <script type="text/javascript" src="/livestamp.min.js"></script>
 <div id="layout">
@@ -6,19 +24,25 @@
             <h1>Status</h1>
             <h2>The status of API and data collection</h2>
         </div>
-
         <div class="content">
-            <h2 class="content-subhead">Currency Pairs</h2>
-            <table>
+            <table class="pair-status pure-table pure-table-horizontal pure-table-striped">
+            <caption>Currency Pairs</caption>
             <thead>
-            	<th>Exchange</th><th>Pair</th>
+            	<th>Exchange</th>
+                <th>Pair</th>
+                <th>Trades</th>
+                <th>Last Trade</th>
+                <th>Status</th>
             </thead>
             <tbody>
             {{range $exchange, $pairs := .Status}}
             	{{range $pair, $status := $pairs}}
             	<tr>
-            		<td>{{$exchange}}</td>
+            		<td><strong>{{$exchange}}</strong></td>
             		<td>{{$pair}}</td>
+                    <td>{{$status.Trades}}</td>
+                    <td><span data-livestamp="{{$status.LastTrade}}"></span></td>
+                    <td><span class="status--{{$status.Status}}">{{$status.Status}}</span></td>
             	</tr>
             	{{end}}
             {{end}}
